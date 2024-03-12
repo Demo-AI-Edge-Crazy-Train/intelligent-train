@@ -12,4 +12,4 @@ IMAGE_FILE="test.jpg"
 IMAGE_BASE64=$(base64 -w 0 "$IMAGE_FILE")
 
 # Publish the base64-encoded image to the MQTT broker
-mosquitto_pub -h "$MQTT_BROKER" -p "$MQTT_PORT" -t "$MQTT_TOPIC" -m "$IMAGE_BASE64"
+mosquitto_pub -h "$MQTT_BROKER" -p "$MQTT_PORT" -t "$MQTT_TOPIC" -m '{"image": "'"$IMAGE_BASE64"'", "id": "test"}'

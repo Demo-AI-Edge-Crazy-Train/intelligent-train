@@ -3,7 +3,6 @@ from io import BytesIO
 import base64
 import cv2
 import numpy as np
-import uuid
 import time
 import onnxruntime as ort
 import json
@@ -26,10 +25,11 @@ IMG_IN_RESPONSE = bool(os.environ.get("IMG_IN_RESPONSE", True))
 def on_message(client, userdata, msg):
     start_fun = time.time()
     print(f"Received message on topic {msg.topic}")
-    uid = uuid.uuid4()
     # Process the received image
     #processed_image = process_image(msg.payload)
-    nparr = np.frombuffer(base64.b64decode(msg.payload), np.uint8)
+    payload = json.loads(msg.payload)
+    image_id = payload["id"]
+    nparr = np.frombuffer(base64.b64decode(payload["image"]), np.uint8)
     img_data = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     # print(nparr)
     # Example: Save the processed image to disk
@@ -47,7 +47,7 @@ def on_message(client, userdata, msg):
     time_fun = time.time() - start_fun
     #cv2.imwrite("last.png", new_image)
     payload = {
-        "uid": str(uid), "image": img_b64, "detections": detections, "pre-process": f'{time_pre:.2f}s', 
+        "id": image_id, "image": img_b64, "detections": detections, "pre-process": f'{time_pre:.2f}s', 
         "inference": f'{time_inf:.2f}s', "post-process": f'{time_post:.2f}s', 
         "total": f'{time_fun:.2f}s', "scale": scale
     }
