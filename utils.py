@@ -28,7 +28,7 @@ def preprocess(original_image):
 
     # Preprocess the image and prepare blob for model
     blob = cv2.dnn.blobFromImage(image, scalefactor=1 / 255, size=(640, 640), swapRB=True)
-    return blob, scale, original_image
+    return blob, scale
 
 
 # def draw_bounding_box(img, class_id, confidence, x, y, x_plus_w, y_plus_h):

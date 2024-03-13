@@ -35,14 +35,14 @@ def on_message(client, userdata, msg):
     # Example: Save the processed image to disk
     # cv2.imwrite("test.jpg", img_data)
     start_pre = time.time()
-    preprocessed, scale, original_image = preprocess(img_data)
+    preprocessed, scale = preprocess(img_data)
     time_pre = time.time() - start_pre
     start_inf = time.time()
     outputs = ort_sess.run(None, {'images': preprocessed})
     time_inf = time.time() - start_inf
     start_post = time.time()
     detections = postprocess(outputs[0])
-    img_b64 = str(msg.payload) if IMG_IN_RESPONSE else ""
+    img_b64 = payload["image"] if IMG_IN_RESPONSE else ""
     time_post = time.time() - start_post
     time_fun = time.time() - start_fun
     #cv2.imwrite("last.png", new_image)
