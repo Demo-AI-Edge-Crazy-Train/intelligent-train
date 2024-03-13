@@ -14,8 +14,8 @@ from utils import *
 # Define the MQTT settings
 MQTT_BROKER = os.environ.get("MQTT_BROKER", "localhost")
 MQTT_PORT = int(os.environ.get("MQTT_PORT", "1883"))
-MQTT_TOPIC = os.environ.get("MQTT_TOPIC", "images")
-MQTT_PUB_TOPIC = os.environ.get("MQTT_PUB_TOPIC", "results")
+MQTT_TOPIC = os.environ.get("MQTT_TOPIC", "train-image")
+MQTT_PUB_TOPIC = os.environ.get("MQTT_PUB_TOPIC", "train-model-result")
 # Other variables
 MODEL_PATH = os.environ.get("MODEL_PATH", "models/model.onnx")
 IMG_IN_RESPONSE = bool(os.environ.get("IMG_IN_RESPONSE", True))
@@ -29,20 +29,28 @@ def on_message(client, userdata, msg):
     #processed_image = process_image(msg.payload)
     payload = json.loads(msg.payload)
     image_id = payload["id"]
+    image = payload["image"]
+    print(f"Received image with id {image_id}")
+    print(f"Received image with size {len(image)}")
+
     nparr = np.frombuffer(base64.b64decode(payload["image"]), np.uint8)
-    img_data = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-    # print(nparr)
+    print(f"Received image with shape {nparr.shape}")
+    nparr = nparr.reshape(480, 640, 3)
+    print(f"shape after reshape {nparr.shape}")
+
+    #print(nparr)
+    #img_data = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     # Example: Save the processed image to disk
-    # cv2.imwrite("test.jpg", img_data)
+    cv2.imwrite("test.jpg", nparr)
     start_pre = time.time()
-    preprocessed, scale, original_image = preprocess(img_data)
+    preprocessed, scale, original_image = preprocess(nparr)
     time_pre = time.time() - start_pre
     start_inf = time.time()
     outputs = ort_sess.run(None, {'images': preprocessed})
     time_inf = time.time() - start_inf
     start_post = time.time()
     detections = postprocess(outputs[0])
-    img_b64 = str(msg.payload) if IMG_IN_RESPONSE else ""
+    img_b64 = str(image) if IMG_IN_RESPONSE else ""
     time_post = time.time() - start_post
     time_fun = time.time() - start_fun
     #cv2.imwrite("last.png", new_image)
@@ -51,7 +59,9 @@ def on_message(client, userdata, msg):
         "inference": f'{time_inf:.2f}s', "post-process": f'{time_post:.2f}s', 
         "total": f'{time_fun:.2f}s', "scale": scale
     }
+   
     payload = json.dumps(payload)
+    print(f"Processed payload: {payload}")
     start_pub = time.time()
     client.publish(MQTT_PUB_TOPIC, payload)
     stop_pub = time.time() - start_pub
@@ -79,7 +89,7 @@ if __name__ == "__main__":
     # Connect to the MQTT broker
     while True:
         try:
-            client.connect(MQTT_BROKER, MQTT_PORT, 60)
+            client.connect(MQTT_BROKER, MQTT_PORT, 120)
             break
         except ConnectionRefusedError:
             print("Connection refused, retying in few seconds...")
