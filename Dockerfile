@@ -1,4 +1,4 @@
-FROM registry.access.redhat.com/ubi9/python-39:latest
+FROM nvcr.io/nvidia/l4t-jetpack:r36.2.0
 
 # This will avoid people forgetting to set no-cache-dir when building images
 ENV PIP_NO_CACHE_DIR=1
@@ -8,13 +8,9 @@ USER 0
 COPY app.py utils.py requirements.txt ./
 ADD models models
 
-# Install packages and cleanup
-# (all commands are chained to minimize layer size)
-RUN echo "Installing softwares and packages" && \
-    pip install -r requirements.txt && \
-    chmod -R g+w /opt/app-root/lib/python3.9/site-packages && \
-    fix-permissions /opt/app-root -P 
+RUN apt update && apt install -y git python3-pip && \
+    wget https://nvidia.box.com/shared/static/i7n40ki3pl2x57vyn4u7e9asyiqlnl7n.whl -O onnxruntime_gpu-1.16.0-cp310-cp310-linux_aarch64.whl && \
+    pip3 install onnxruntime_gpu-1.16.0-cp310-cp310-linux_aarch64.whl && \
+    pip3 install -r requirements.txt
 
-USER 1001
-
-CMD [ "python", "app.py"]
+CMD [ "python3", "app.py"]

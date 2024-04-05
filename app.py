@@ -31,17 +31,17 @@ def on_message(client, userdata, msg):
     image_id = payload["id"]
     image = payload["image"]
     print(f"Received image with id {image_id}")
-    print(f"Received image with size {len(image)}")
+    #print(f"Received image with size {len(image)}")
 
     nparr = np.frombuffer(base64.b64decode(payload["image"]), np.uint8)
-    print(f"Received image with shape {nparr.shape}")
+    #print(f"Received image with shape {nparr.shape}")
     nparr = nparr.reshape(480, 640, 3)
-    print(f"shape after reshape {nparr.shape}")
+    #print(f"shape after reshape {nparr.shape}")
 
     #print(nparr)
     #img_data = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
     # Example: Save the processed image to disk
-    cv2.imwrite("test.jpg", nparr)
+    #cv2.imwrite("test.jpg", nparr)
     start_pre = time.time()
     preprocessed, scale, original_image = preprocess(nparr)
     time_pre = time.time() - start_pre
@@ -61,7 +61,7 @@ def on_message(client, userdata, msg):
     }
    
     payload = json.dumps(payload)
-    print(f"Processed payload: {payload}")
+    #print(f"Processed payload: {payload}")
     start_pub = time.time()
     client.publish(MQTT_PUB_TOPIC, payload)
     stop_pub = time.time() - start_pub
@@ -78,7 +78,7 @@ def on_disconnect(client, userdata, rc):
         print("Unexpected disconnection from MQTT broker")
 
 if __name__ == "__main__":
-    ort_sess = ort.InferenceSession(MODEL_PATH)
+    ort_sess = ort.InferenceSession(MODEL_PATH, providers=['CUDAExecutionProvider'])
 
     # Create a MQTT client
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
