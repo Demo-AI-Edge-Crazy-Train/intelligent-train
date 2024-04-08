@@ -2,4 +2,4 @@ namespace: intelligent-train
 resources:
 - namespace.yaml
 - runtimeclass.yaml
-- deployement.yaml
+- deployment.yaml
