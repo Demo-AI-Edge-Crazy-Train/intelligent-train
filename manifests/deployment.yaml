@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: intelligent-train
+  namespace: intelligent-train
+  labels:
+    app: intelligent-train
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: intelligent-train
+  template:
+    metadata:
+      labels:
+        app: intelligent-train
+    spec:
+      runtimeClassName: gpu-enabled-class
+      containers:
+      - name: intelligent-train
+        image: quay.io/demo-ai-edge-crazy-train/intelligent-train:jetson
+      resources:
+        limits:
+          nvidia.com/gpu: 1
+  tolerations:
+    - key: nvidia.com/gpu
+      operator: Exists
+      effect: NoSchedule
