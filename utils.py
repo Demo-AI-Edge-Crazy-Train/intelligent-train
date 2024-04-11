@@ -4,12 +4,8 @@ import cv2.dnn
 import numpy as np
 
 CLASSES = {
-  0: "SpeedLimit_30",
-  1: "SpeedLimit_50",
-  2: "TrafficSignalsAhead",
-  3: "PedestiranCrossingAhead",
-  4: "RedTrafficLight",
-  5: "GreenTrafficLight"
+  0: "SpeedLimit",
+  1: "DangerAhead"
 }
 colors = np.random.uniform(0, 255, size=(len(CLASSES), 3))
 
