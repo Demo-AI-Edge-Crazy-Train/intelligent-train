@@ -1,13 +1,14 @@
 import paho.mqtt.client as mqtt
-from io import BytesIO
 import base64
-import cv2
 import numpy as np
 import time
 import onnxruntime as ort
 import json
 import os
+import logging
+import ast
 
+from prometheus_client import start_http_server, Summary, Histogram
 from utils import *
 
 
@@ -19,29 +20,22 @@ MQTT_PUB_TOPIC = os.environ.get("MQTT_PUB_TOPIC", "train-model-result")
 # Other variables
 MODEL_PATH = os.environ.get("MODEL_PATH", "models/model.onnx")
 IMG_IN_RESPONSE = bool(os.environ.get("IMG_IN_RESPONSE", True))
+# Onnxruntime providers
+PROVIDERS = ast.literal_eval(os.environ.get("ONNXRUNTIME_PROVIDERS", '["CUDAExecutionProvider"]'))
+# Prometheus
+REQUEST_TIME = Summary('request_processing_seconds', 'Time spent processing request')
 
 
 # Define the MQTT event handler
+@REQUEST_TIME.time()
 def on_message(client, userdata, msg):
     start_fun = time.time()
-    print(f"Received message on topic {msg.topic}")
     # Process the received image
-    #processed_image = process_image(msg.payload)
     payload = json.loads(msg.payload)
     image_id = payload["id"]
     image = payload["image"]
-    print(f"Received image with id {image_id}")
-    #print(f"Received image with size {len(image)}")
-
     nparr = np.frombuffer(base64.b64decode(payload["image"]), np.uint8)
-    #print(f"Received image with shape {nparr.shape}")
     nparr = nparr.reshape(480, 640, 3)
-    #print(f"shape after reshape {nparr.shape}")
-
-    #print(nparr)
-    #img_data = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-    # Example: Save the processed image to disk
-    #cv2.imwrite("test.jpg", nparr)
     start_pre = time.time()
     preprocessed, scale, original_image = preprocess(nparr)
     time_pre = time.time() - start_pre
@@ -53,6 +47,8 @@ def on_message(client, userdata, msg):
     img_b64 = str(image) if IMG_IN_RESPONSE else ""
     time_post = time.time() - start_post
     time_fun = time.time() - start_fun
+    total_inference_time = time_pre + time_inf + time_post
+    h.observe(time_pre + time_inf + time_post)
     #cv2.imwrite("last.png", new_image)
     payload = {
         "id": image_id, "image": img_b64, "detections": detections, "pre-process": f'{time_pre:.2f}s', 
@@ -61,25 +57,35 @@ def on_message(client, userdata, msg):
     }
    
     payload = json.dumps(payload)
-    #print(f"Processed payload: {payload}")
+    #logger.info(f"Processed payload: {payload}")
     start_pub = time.time()
     client.publish(MQTT_PUB_TOPIC, payload)
     stop_pub = time.time() - start_pub
-    print(f"Published a message to \"{MQTT_PUB_TOPIC}\" topic")
+    logger.info(f"Processed image {image_id} in {total_inference_time:.5f}s")
 
 def on_connect(client, userdata, flags, rc, properties):
-    print(f"Connected with result code {rc}")
+    logger.info(f"Connected with result code {rc}")
     # Subscribe to the MQTT topic when connected
     client.subscribe(MQTT_TOPIC)
-    print(f"Subscribed to topic: {MQTT_TOPIC}")
+    logger.info(f"Subscribed to topic: {MQTT_TOPIC}")
 
 def on_disconnect(client, userdata, rc):
     if rc != 0:
-        print("Unexpected disconnection from MQTT broker")
+        logger.info("Unexpected disconnection from MQTT broker")
 
 if __name__ == "__main__":
-    ort_sess = ort.InferenceSession(MODEL_PATH, providers=['CUDAExecutionProvider'])
-
+    # Logger
+    logging.basicConfig(
+        format='%(asctime)s %(levelname)-8s %(message)s',
+        level=logging.INFO,
+        datefmt='%Y-%m-%d %H:%M:%S'
+    )
+    logger = logging.getLogger(__name__)
+    # Prometheus
+    start_http_server(8000)
+    h = Histogram('request_latency_seconds', 'Total inference time')
+    # Inference Session
+    ort_sess = ort.InferenceSession(MODEL_PATH, providers=PROVIDERS)
     # Create a MQTT client
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
     client.on_connect = on_connect
@@ -92,7 +98,7 @@ if __name__ == "__main__":
             client.connect(MQTT_BROKER, MQTT_PORT, 120)
             break
         except ConnectionRefusedError:
-            print("Connection refused, retying in few seconds...")
+            logger.info("Connection refused, retying in few seconds...")
             time.sleep(3)
 
     # Start the MQTT loop
