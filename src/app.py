@@ -35,7 +35,7 @@ def on_message(client, userdata, msg):
     image_id = payload["id"]
     image = payload["image"]
     nparr = np.frombuffer(base64.b64decode(payload["image"]), np.uint8)
-    nparr = nparr.reshape(480, 640, 3)
+    nparr = cv2.imdecode(".webp", nparr, cv2.IMREAD_COLOR)
     start_pre = time.time()
     preprocessed, scale, original_image = preprocess(nparr)
     time_pre = time.time() - start_pre
