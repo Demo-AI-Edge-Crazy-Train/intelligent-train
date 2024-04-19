@@ -49,7 +49,7 @@ def on_message(client, userdata, msg):
     time_fun = time.time() - start_fun
     total_inference_time = time_pre + time_inf + time_post
     h.observe(time_pre + time_inf + time_post)
-    #cv2.imwrite("last.png", new_image)
+    #cv2.imwrite("last.png", nparr)
     payload = {
         "id": image_id, "image": img_b64, "detections": detections, "pre-process": f'{time_pre:.2f}s', 
         "inference": f'{time_inf:.2f}s', "post-process": f'{time_post:.2f}s', 
